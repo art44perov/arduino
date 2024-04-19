@@ -1,0 +1,106 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSerif9pt7b.h>
+#include <dht.h>
+#include <Servo.h>
+
+
+
+#define DHT22_PIN 2
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+dht DHT;
+
+Servo myservo;
+
+
+struct {
+  uint32_t total;
+  uint32_t ok;
+  uint32_t crc_error;
+  uint32_t time_out;
+  uint32_t connect;
+  uint32_t ack_l;
+  uint32_t ack_h;
+  uint32_t unknown;
+} stat = { 0, 0, 0, 0, 0, 0, 0, 0};
+
+int pos = 0;
+int pos_init = 90;
+bool serv_open = false;
+bool serv_close = true;
+
+void setup() {
+  Serial.begin(115200);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 allocation failed");
+    for (;;);
+  }
+
+  myservo.attach(3);
+  myservo.write(pos_init); 
+  delay(2000);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(25, 20);
+  display.println("Hello, world!");
+  display.display();
+
+  delay(2000);
+  display.clearDisplay();
+
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  Serial.print("DHT22, \t");
+
+  uint32_t start = micros();
+  int chk = DHT.read22(DHT22_PIN);
+  uint32_t stop = micros();
+
+  Serial.print(DHT.humidity, 1);
+  Serial.print(",\t");
+  Serial.print(DHT.temperature, 1);
+  Serial.print(",\t");
+  Serial.print(stop - start);
+  Serial.println();
+
+  display.setCursor(0, 0);
+  display.println("-------");
+  display.print("T:");
+  display.println(DHT.temperature, 1);
+  display.print("H:");
+  display.println(DHT.humidity, 1);
+  display.println("-------");
+  display.display();
+  display.clearDisplay();
+
+  if (DHT.temperature > 25 && serv_close == true) {
+    for (pos = 90; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      delay(15);                       // waits 15ms for the servo to reach the position
+    }
+    serv_open = true;
+    serv_close = false;
+
+  } else if (DHT.temperature < 25 && serv_open == true) {
+
+    for (pos = 180; pos >= 90; pos -= 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      myservo.write(pos);              // tell servo to go to position in variable 'pos'
+      delay(15);                       // waits 15ms for the servo to reach the position
+    }
+    serv_open = false;
+    serv_close = true;
+  }
+  delay(2000);
+}
