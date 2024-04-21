@@ -1,0 +1,28 @@
+#include "SdFat.h"
+
+#define SPI_SPEED SD_SCK_MHZ(4)
+#define CS_PIN 10
+
+SdFat sd;
+
+void setup() {
+  Serial.begin(115200);
+  if (!sd.begin(CS_PIN, SPI_SPEED)) {
+    if (sd.card()->errorCode()) {
+      Serial.println("SD initialization failed.");
+    } else if (sd.vol()->fatType() == 0) {
+      Serial.println("Can't find a valid FAT16/FAT32 partition.");
+    } else {
+      Serial.println("Can't determine error type");
+    }
+    return;
+  }
+
+  Serial.println("Files on card:");
+  Serial.println("   Size    Name");
+
+  sd.ls(LS_R | LS_SIZE);
+}
+
+void loop() {
+}
